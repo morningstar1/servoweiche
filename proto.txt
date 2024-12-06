@@ -1,0 +1,26 @@
+SlaveAdr Function Register Data    CRC
+1 Byte   1 Byte   2 Byte   2 Byte  2 Byte
+
+
+Function
+    Read
+    Write
+
+SlaveAdr 255 = Broadcast
+
+Register
+1   SlaveAdr            RW
+2   Activity Bitmap     RW
+3   Match SlaveAdr      RW
+4   Servo Limits        RW
+
+Servo Control Activity Bitmap for Servo
+Bit 0: Servo 1 is Left
+Bit 1: Servo 1 is Right
+Bit 2: Servo 2 is Left
+Bit 3: Servo 2 is Right
+Servo Control Activity Bitmap for Control
+Bit 0: Switch 1 Left pressed
+Bit 1: Switch 1 Right pressed
+Bit 2: Switch 2 Left pressed
+Bit 3: Switch 2 Right pressed
