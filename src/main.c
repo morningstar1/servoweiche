@@ -1,143 +1,130 @@
-/* --COPYRIGHT--,BSD_EX
- * Copyright (c) 2012, Texas Instruments Incorporated
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * *  Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * *  Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * *  Neither the name of Texas Instruments Incorporated nor the names of
- *    its contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
- * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- *******************************************************************************
- * 
- *                       MSP430 CODE EXAMPLE DISCLAIMER
- *
- * MSP430 code examples are self-contained low-level programs that typically
- * demonstrate a single peripheral function or device feature in a highly
- * concise manner. For this the code may rely on the device's power-on default
- * register values and settings such as the clock configuration and care must
- * be taken when combining code from several examples to avoid potential side
- * effects. Also see www.ti.com/grace for a GUI- and www.ti.com/msp430ware
- * for an API functional library-approach to peripheral configuration.
- *
- * --/COPYRIGHT--*/
 //******************************************************************************
-//   MSP430G2xx3 Demo - USCI_A0, Ultra-Low Pwr UART 9600 RX/TX, 32kHz ACLK
+//   MSP430FR243x Demo - eUSCI_A0, UART Echo received character
+//                     (ACLK 9600/SMCLK 9600/SMCLK 115200)
 //
-//   Description: This program demonstrates a full-duplex 9600-baud UART using
-//   USCI_A0 and a 32kHz crystal.  The program will wait in LPM3, and receive
-//   a string1 into RAM, and echo back the complete string.
-//   ACLK = BRCLK = LFXT1 = 32768Hz, MCLK = SMCLK = DCO ~1.2MHz
-//   Baud rate divider with 32768Hz XTAL @9600 = 32768Hz/9600 = 3.41
-//* An external watch crystal is required on XIN XOUT for ACLK *//
+//   Description: The device will wait in LPM0/LPM3 (based on clock source)
+//   until a UART character is received.
+//   Then the device will echo the received character.
+//   The UART can operate using ACLK at 9600, SMCLK at 115200 or SMCLK at 9600.
+//   To configure the UART mode, change the following line:
 //
-//                MSP430G2xx3
-//             -----------------
-//         /|\|              XIN|-
-//          | |                 | 32kHz
-//          --|RST          XOUT|-
-//            |                 |
-//            |     P1.2/UCA0TXD|------------>
-//            |                 | 9600 - 8N1
-//            |     P1.1/UCA0RXD|<------------
+//      #define UART_MODE       SMCLK_115200
+//      to any of:
+//      #define UART_MODE       SMCLK_115200
+//      #define UART_MODE       SMCLK_9600
+//      #define UART_MODE       ACLK_9600
+//
+//   UART RX ISR is used to handle communication.
+//   ACLK = 32.768kHz, MCLK = SMCLK = DCO 16MHz.
 //
 //
-//   D. Dang
+//
+//                   MSP430FR2633
+//                 -----------------
+//            /|\ |             P1.5|<-- Receive Data (UCA0RXD)
+//             |  |                 |
+//             ---|RST          P1.4|--> Transmit Data (UCA0TXD)
+//                |                 |
+//                |                 |
+//                |                 |
+//   Error LED  <-|P1.0             |
+//                |                 |
+//                |                 |
+//
+//   Nima Eskandari and Ryan Meredith
 //   Texas Instruments Inc.
-//   February 2011
-//   Built with CCS Version 4.2.0 and IAR Embedded Workbench Version: 5.10
+//   November 2017
+//   Built with CCS V7.3
 //******************************************************************************
+
 #include <msp430.h>
-#include "pwm.h"
+
 #include "uart.h"
+#include "pwm.h"
+#include "protocol.h"
 
-#define LED1 BIT0
-#define LED2 BIT6
+//******************************************************************************
+// UART Initialization *********************************************************
+//******************************************************************************
 
-#include <stdint.h>
-#include <stdio.h>
+#define LED_OUT     P1OUT
+#define LED_DIR     P1DIR
+#define LED_PIN     BIT0
 
-int checkModbus()
+
+//******************************************************************************
+// Device Initialization *******************************************************
+//******************************************************************************
+
+void initGPIO()
 {
-  if (uart_getValidBufferSize() < 4)
-    return 0; //need more data
+    LED_DIR |= LED_PIN;
+    LED_OUT &= ~LED_PIN;
 
-  uint8_t slaveadr = uart_read(0);
+    // Configure GPIO
+    
+    //P1SEL1 &= ~(BIT4 | BIT5);                 // USCI_A0 UART operation
+    P1SEL0 |= BIT0 | BIT1;
 
-  switch (uart_read(1)) //function
-  {
-    case 0x01: //Read	Discrete Output Coils
-      break;
-    case 0x05: //Write single	Discrete Output Coil
-      break;
-    case 0x0F: //Write multiple	Discrete Output Coils
-      break;
-    case 0x02: //Read	Discrete Input Contacts
-      break;
-    case 0x04: //Read	Analog Input Registers
-      break;
-    case 0x03: //Read	Analog Output Holding Registers
-      break;
-    case 0x06: //Write single	Analog Output Holding Register
-      //we need 8 Byte total
-      if(uart_getValidBufferSize() >= 8 && slaveadr == 1){
-        uint16_t write_register = (((int)uart_read(2)) << 8) & ((int)uart_read(3));
-        uint16_t data = (((int)uart_read(4)) << 8) & ((int)uart_read(5));
-        uint16_t crc = (((int)uart_read(7)) << 8) & ((int)uart_read(6));
-        pwm_set(uart_read(5));
-        P1OUT ^= (LED1);
-        char ret[8];
-        for(int i = 0; i< 8; i++)
-          ret[i] = uart_read(i);
-        uart_seek(8);
-        uart_send(ret, 8);
-        return 1; //try again with more data
-      }else{
-        return 0; //need more data
-      }
-      break;
-    case 0x10: //Write multiple	Analog Output Holding Registers
-      break;
-  }
-  //nothing found, try again with one byte less
-  uart_seek(1);
-  return 1;
+    // Disable the GPIO power-on default high-impedance mode to activate
+    // previously configured port settings
+    PM5CTL0 &= ~LOCKLPM5;
 }
+
+void initClockTo16MHz()
+{
+    // Configure one FRAM waitstate as required by the device datasheet for MCLK
+    // operation beyond 8MHz _before_ configuring the clock system.
+    FRCTL0 = FRCTLPW | NWAITS_1;
+
+    __bis_SR_register(SCG0);    // disable FLL
+    CSCTL3 |= SELREF__REFOCLK;  // Set REFO as FLL reference source
+    CSCTL0 = 0;                 // clear DCO and MOD registers
+    CSCTL1 &= ~(DCORSEL_7);     // Clear DCO frequency select bits first
+    CSCTL1 |= DCORSEL_5;        // Set DCO = 16MHz
+    CSCTL2 = FLLD_0 + 487;      // set to fDCOCLKDIV = (FLLN + 1)*(fFLLREFCLK/n)
+                                //                   = (487 + 1)*(32.768 kHz/1)
+                                //                   = 16 MHz
+    __delay_cycles(3);
+    __bic_SR_register(SCG0);                        // enable FLL
+    while(CSCTL7 & (FLLUNLOCK0 | FLLUNLOCK1));      // FLL locked
+
+    CSCTL4 = SELMS__DCOCLKDIV | SELA__REFOCLK;
+}
+
+//******************************************************************************
+// Main ************************************************************************
+// Enters LPM0 if SMCLK is used and waits for UART interrupts. If ACLK is used *
+// then the device will enter LPM3 mode instead. The UART RX interrupt handles *
+// the received character and echoes it.                                       *
+//******************************************************************************
 
 int main(void)
 {
-  WDTCTL = WDTPW + WDTHOLD;                 // Stop WDT
-  P1DIR |=  (LED1);
-  P1OUT &= ~(LED1); //LED1 aus
+  WDTCTL = WDTPW | WDTHOLD;                 // Stop Watchdog
+  initLed();
+  setLed(0xF);
 
+
+  initClockTo16MHz();
+  initLed();
+  initGPIO();
   uart_init();
   pwm_init();
 
-  while(1){
-    __bis_SR_register(LPM3_bits + GIE);       // Enter LPM3, interrupts enabled
-    //check tasks;
-    while (checkModbus())  {  }
-  }
 
+
+  LED_OUT ^= LED_PIN;
+
+  while(1){
+#if UART_MODE == SMCLK_9600
+    __bis_SR_register(LPM3_bits + GIE);       // Since ACLK is source, enter LPM3, interrupts enabled
+#else
+    __bis_SR_register(LPM0_bits + GIE);       // Since SMCLK is source, enter LPM0, interrupts enabled
+#endif
+    while (checkModbus()) { }
+
+  }
+  __no_operation();                         // For debugger
 }
+

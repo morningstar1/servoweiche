@@ -11,7 +11,7 @@ SlaveAdr 255 = Broadcast
 Register
 1   SlaveAdr            RW
 2   Activity Bitmap     RW
-3   Match SlaveAdr      RW
+3   Match SlaveAddr     RW
 4   Servo Limits        RW
 
 Servo Control Activity Bitmap for Servo

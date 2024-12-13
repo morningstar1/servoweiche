@@ -1,41 +1,79 @@
 #include <msp430.h>
+#include "uart_init.h"
+#include "uart.h"
 
-void uart_init_9600(void)
+void uart_init()
 {
-  P1SEL |= BIT1 | BIT2 ;                     // P1.1 = RXD, P1.2=TXD
-  P1SEL2 |= BIT1 | BIT2 ;                     // P1.1 = RXD, P1.2=TXD
+    UART_DIR |= UART_TX_ENABLE;
+    UART_OUT &= ~(UART_TX_ENABLE); // auf 0 setzen
 
-  UCA0CTL1 |= UCSSEL_1;                     // CLK = ACLK
-  UCA0BR0 = 0x03;                           // 32kHz/9600 = 3.41
-  UCA0BR1 = 0x00;                           //
-  UCA0MCTL = UCBRS1 + UCBRS0;               // Modulation UCBRSx = 3
-  UCA0CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
-  IE2 |= UCA0RXIE;                          // Enable USCI_A0 RX interrupt
+    // Configure USCI_A0 for UART mode
+    UCA0CTLW0 |= UCSWRST;                      // Put eUSCI in reset
+#if UART_MODE == SMCLK_115200
+
+    UCA0CTLW0 |= UCSSEL__SMCLK;               // CLK = SMCLK
+    // Baud Rate Setting
+    // Use Table 21-5
+    UCA0BRW = 8;
+    UCA0MCTLW |= UCOS16 | UCBRF_10 | 0xF700;   //0xF700 is UCBRSx = 0xF7
+
+#elif UART_MODE == SMCLK_9600
+
+    UCA0CTLW0 |= UCSSEL__SMCLK;               // CLK = SMCLK
+    // Baud Rate Setting
+    // Use Table 21-5
+    UCA0BRW = 104;
+    UCA0MCTLW |= UCOS16 | UCBRF_2 | 0xD600;   //0xD600 is UCBRSx = 0xD6
+#else
+    # error "Please specify baud rate to 115200 or 9600"
+#endif
+
+    UCA0CTLW0 &= ~UCSWRST;                    // Initialize eUSCI
+    UCA0IE |= UCRXIE;             // Enable USCI_A0 RX interrupt
 }
 
 
-int uart_init_19200(void)
+//******************************************************************************
+// UART Interrupt ***********************************************************
+//******************************************************************************
+
+#if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
+#pragma vector=USCI_A0_VECTOR
+__interrupt void USCI_A0_ISR(void)
+#elif defined(__GNUC__)
+void __attribute__ ((interrupt(USCI_A0_VECTOR))) USCI_A0_ISR (void)
+#else
+#error Compiler not supported!
+#endif
 {
-  if (CALBC1_1MHZ==0xFF)					// If calibration constant erased
-  {											
-    while(1);                               // do not load, trap CPU!!	
+  //switch(__even_in_range(UCA0IV, USCI_UART_UCTXCPTIFG))
+  switch(UCA0IV)
+  {
+    case USCI_NONE:
+      break;
+    case USCI_UART_UCRXIFG:
+      while(uart_getValidBufferSize() >= uart_buffer_size){
+        // make some space
+        uart_seek(1);
+      }
+      uart_readbuffer[uart_readpos_in++ & (uart_buffer_size - 1)] = UCA0RXBUF;
+      UCA0IFG &= ~(UCRXIFG); //clear interrupt
+      __bic_SR_register_on_exit(LPM0_bits + GIE);  // Exit LPM0 on return to main
+      break;
+    case USCI_UART_UCTXIFG:
+      UCA0TXBUF = uart_writebuffer[uart_writepos++];
+      if (uart_writepos == uart_writebuffersize)                  // TX over?
+        UCA0IE &= ~UCTXIE;                       // Disable USCI_A0 TX interrupt
+      break;
+    case USCI_UART_UCSTTIFG: 
+      break;
+    case USCI_UART_UCTXCPTIFG: 
+      if (uart_writepos == uart_writebuffersize)                  // TX over?
+      {
+        __delay_cycles(1250);
+        UART_OUT &= ~(UART_TX_ENABLE); // auf 0 setzen
+        UCA0IE &= ~UCTXCPTIE;               
+      }
+      break;
   }
-  DCOCTL = 0;                               // Select lowest DCOx and MODx settings
-  BCSCTL1 = CALBC1_1MHZ;                    // Set DCO
-  DCOCTL = CALDCO_1MHZ;
-  P1SEL = BIT1 + BIT2 ;                     // P1.1 = RXD, P1.2=TXD
-  P1SEL2 = BIT1 + BIT2 ;                    // P1.1 = RXD, P1.2=TXD
-  UCA0CTL1 |= UCSSEL_2;                     // SMCLK
-  UCA0BR0 = 52;                             // 1MHz 19200
-  UCA0BR1 = 0;                              // 1MHz 19200
-  UCA0MCTL = UCBRS0;                        // Modulation UCBRSx = 1
-  UCA0CTL1 &= ~UCSWRST;                     // **Initialize USCI state machine**
-  IE2 |= UCA0RXIE;                          // Enable USCI_A0 RX interrupt
-
-  //__bis_SR_register(LPM0_bits + GIE);       // Enter LPM0, interrupts enabled
-}
-
-void uart_init(void)
-{
-  uart_init_19200();
 }
