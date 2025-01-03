@@ -2,99 +2,55 @@
 #include "data.h"
 #include "pwm.h"
 
-#define FRAM_TEST_START 0x1800
-void setLed(uint16_t data);
-
-void FRAMWrite (uint16_t * FRAM_write_ptr, uint16_t data)
+void FRAMWrite (enum RegisterMap reg, uint16_t data)
 {
     SYSCFG0 &= ~DFWP;
-    *FRAM_write_ptr++ = data;
+    uint16_t * FRAM_write_ptr = ((uint16_t*)INFO_START) + reg;
+    *FRAM_write_ptr = data;
     SYSCFG0 |= DFWP;
 }
 
-enum FramMap {
-    FM_SlaveAddr = 0,
-    FM_ServoPosition = 1
-};
-
-enum RegisterMap {
-    SlaveAddr = 1,
-    ActivityBitmap = 2,
-    MatchSlaveAddr = 3,
-    ServoLimits = 4,
-    ServoPos = 5,  
-    ServoSpeed = 6
-};
-
-uint16_t getRead(uint16_t register_)
+uint16_t getFRAMValue(enum RegisterMap reg)
 {
-    switch (register_)
-    {
-    case SlaveAddr:
-        return getMySlaveAddr() & 0x00FF;
-    case ActivityBitmap:
-        return *(((uint16_t*)FRAM_TEST_START) + FM_ServoPosition);
-        break;
-    case MatchSlaveAddr:
-        break;
-    case ServoLimits:
-        break;
-    case ServoPos:
-        return pwm_get(0);
-    case ServoSpeed:
-        return pwm_getSpeed();
+    if(reg < RM_LAST){
+        return *(((uint16_t*)INFO_START) + reg);
     }
     return 0;
 }
-
-
-uint16_t setWrite(uint16_t register_, uint16_t data)
+uint16_t setFRAMValue(enum RegisterMap reg, uint16_t data)
 {
-    switch (register_)
+    switch (reg)
     {
-    case SlaveAddr:
-        FRAMWrite(((uint16_t*)FRAM_TEST_START) + FM_SlaveAddr, data);
+    case RM_Function:
+        if(data < FN_LAST){
+            FRAMWrite(reg, data);
+            return 1;
+        }else{
+            return 0;
+        }
+    case RM_ServoLimitMin1:
+    case RM_ServoLimitMin2:
+    case RM_ServoLimitMin3:
+    case RM_ServoLimitMin4:
+    case RM_ServoLimitMax1:
+    case RM_ServoLimitMax2:
+    case RM_ServoLimitMax3:
+    case RM_ServoLimitMax4:
+            FRAMWrite(reg, data);
         return 1;
-    case ActivityBitmap:
-        setLed(data);
-        return 1;
-        break;
-    case MatchSlaveAddr:
-        break;
-    case ServoLimits:
-        break;
-    case ServoPos:
-        pwm_set(0, data);
-        return 1;
-    case ServoSpeed:
-        pwm_setSpeed(data);
+    case RM_ServoSwitch1:
+    case RM_ServoSwitch2:
+    case RM_ServoSwitch3:
+    case RM_ServoSwitch4:
+        if(data == 0 || data == 1){
+            FRAMWrite(reg, data);
+            return 1;
+        }else{
+            return 0;
+        }
+    case RM_ServoSpeed:
+            FRAMWrite(reg, data);
         return 1;
     }
     return 0;
-}
-uint8_t getMySlaveAddr()
-{
-    return (*(((uint16_t*)FRAM_TEST_START) + FM_SlaveAddr) & 0x00FF);
-}
-
-void initLed()
-{
-    P5DIR |= BIT3;
-    P1DIR |= BIT3 | BIT4;
-    setLed(0);
-}
-void setLed(uint16_t data)
-{
-    /*
-    1.3
-    1.4
-    */
-    if(data & 0x0001)
-        P1OUT |= BIT3;
-    else
-        P1OUT &= ~BIT3;
-    if(data & 0x0002)
-        P1OUT |= BIT4;
-    else
-        P1OUT &= ~BIT4;
 }

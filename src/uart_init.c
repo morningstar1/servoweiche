@@ -4,32 +4,29 @@
 
 void uart_init()
 {
-    UART_DIR |= UART_TX_ENABLE;
-    UART_OUT &= ~(UART_TX_ENABLE); // auf 0 setzen
-
     // Configure USCI_A0 for UART mode
-    UCA0CTLW0 |= UCSWRST;                      // Put eUSCI in reset
+    UCA1CTLW0 |= UCSWRST;                      // Put eUSCI in reset
 #if UART_MODE == SMCLK_115200
 
-    UCA0CTLW0 |= UCSSEL__SMCLK;               // CLK = SMCLK
+    UCA1CTLW0 |= UCSSEL__SMCLK;               // CLK = SMCLK
     // Baud Rate Setting
     // Use Table 21-5
-    UCA0BRW = 8;
-    UCA0MCTLW |= UCOS16 | UCBRF_10 | 0xF700;   //0xF700 is UCBRSx = 0xF7
+    UCA1BRW = 8;
+    UCA1MCTLW |= UCOS16 | UCBRF_10 | 0xF700;   //0xF700 is UCBRSx = 0xF7
 
 #elif UART_MODE == SMCLK_9600
 
-    UCA0CTLW0 |= UCSSEL__SMCLK;               // CLK = SMCLK
+    UCA1CTLW0 |= UCSSEL__SMCLK;               // CLK = SMCLK
     // Baud Rate Setting
     // Use Table 21-5
-    UCA0BRW = 104;
-    UCA0MCTLW |= UCOS16 | UCBRF_2 | 0xD600;   //0xD600 is UCBRSx = 0xD6
+    UCA1BRW = 104;
+    UCA1MCTLW |= UCOS16 | UCBRF_2 | 0xD600;   //0xD600 is UCBRSx = 0xD6
 #else
     # error "Please specify baud rate to 115200 or 9600"
 #endif
 
-    UCA0CTLW0 &= ~UCSWRST;                    // Initialize eUSCI
-    UCA0IE |= UCRXIE;             // Enable USCI_A0 RX interrupt
+    UCA1CTLW0 &= ~UCSWRST;                    // Initialize eUSCI
+    UCA1IE |= UCRXIE;             // Enable USCI_A0 RX interrupt
 }
 
 
@@ -38,16 +35,16 @@ void uart_init()
 //******************************************************************************
 
 #if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
-#pragma vector=USCI_A0_VECTOR
-__interrupt void USCI_A0_ISR(void)
+#pragma vector=USCI_A1_VECTOR
+__interrupt void USCI_A1_ISR(void)
 #elif defined(__GNUC__)
-void __attribute__ ((interrupt(USCI_A0_VECTOR))) USCI_A0_ISR (void)
+void __attribute__ ((interrupt(USCI_A1_VECTOR))) USCI_A1_ISR (void)
 #else
 #error Compiler not supported!
 #endif
 {
   //switch(__even_in_range(UCA0IV, USCI_UART_UCTXCPTIFG))
-  switch(UCA0IV)
+  switch(UCA1IV)
   {
     case USCI_NONE:
       break;
@@ -57,22 +54,22 @@ void __attribute__ ((interrupt(USCI_A0_VECTOR))) USCI_A0_ISR (void)
         uart_seek(1);
       }
       uart_readbuffer[uart_readpos_in++ & (uart_buffer_size - 1)] = UCA0RXBUF;
-      UCA0IFG &= ~(UCRXIFG); //clear interrupt
+      UCA1IFG &= ~(UCRXIFG); //clear interrupt
       __bic_SR_register_on_exit(LPM0_bits + GIE);  // Exit LPM0 on return to main
       break;
     case USCI_UART_UCTXIFG:
-      UCA0TXBUF = uart_writebuffer[uart_writepos++];
+      UCA1TXBUF = uart_writebuffer[uart_writepos++];
       if (uart_writepos == uart_writebuffersize)                  // TX over?
-        UCA0IE &= ~UCTXIE;                       // Disable USCI_A0 TX interrupt
+        UCA1IE &= ~UCTXIE;                       // Disable USCI_A0 TX interrupt
       break;
     case USCI_UART_UCSTTIFG: 
       break;
     case USCI_UART_UCTXCPTIFG: 
       if (uart_writepos == uart_writebuffersize)                  // TX over?
       {
-        __delay_cycles(1250);
-        UART_OUT &= ~(UART_TX_ENABLE); // auf 0 setzen
-        UCA0IE &= ~UCTXCPTIE;               
+        //__delay_cycles(1250);
+        //UART_OUT &= ~(UART_TX_ENABLE); // auf 0 setzen
+        UCA1IE &= ~UCTXCPTIE;               
       }
       break;
   }

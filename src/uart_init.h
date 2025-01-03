@@ -3,10 +3,6 @@
 #define uart_buffer_bits 5
 #define uart_buffer_size (1 << uart_buffer_bits)
 
-#define UART_OUT P8OUT
-#define UART_DIR P8DIR
-#define UART_TX_ENABLE BIT1
-
 extern char uart_readbuffer[uart_buffer_size];
 
 extern int uart_readpos_in;

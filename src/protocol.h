@@ -1,2 +1,2 @@
 #pragma once
-extern int checkModbus();
+extern int checkUart();
