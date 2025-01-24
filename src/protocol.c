@@ -2,6 +2,9 @@
 #include <msp430.h>
 #include "uart.h"
 #include "data.h"
+#include "reset.h"
+#include "debug.h"
+#include "gpio.h"
 
 #if 0
 char getHex(int v){
@@ -58,6 +61,20 @@ void checkData(Message * d){
       break;
     case 2: //write
       d->data = setFRAMValue(d->register_, d->data);
+      break;
+    case 3:
+      d->data = 1;
+      requestReset();
+    case 4:
+      d->data = getDebug(d->register_);
+      break;
+    case 5:
+      setRelais(
+        d->data & 0x01 ? 1 : 0, 
+        d->data & 0x02 ? 1 : 0, 
+        d->data & 0x04 ? 1 : 0
+      );
+      d->data = 1;
       break;
     }
 

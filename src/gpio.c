@@ -1,5 +1,6 @@
 #include <msp430.h>
 #include "gpio.h"
+#include "debug.h"
 
 uint8_t switchInput = 0;
 
@@ -22,28 +23,35 @@ void setLEDs(uint8_t output)
 
 void setRelais(int nr, int direction, int value)
 {
-    if(nr == 0)
-        if(direction == 0)
-            if(value == 0)
+    if(nr == 0){
+        if(direction == 0){
+            if(value == 0){
                 P4OUT &= ~BIT0;
-            else if(value = 1)
+            }else if(value = 1){
                 P4OUT |= BIT0;
-        else if(direction == 1)
-            if(value == 0)
+            }
+        }else if(direction == 1){
+            if(value == 0){
                 P4OUT &= ~BIT1;
-            else if(value == 1)
+            }else if(value == 1){
                 P4OUT |= BIT1;
-    else if(nr == 1)
-        if(direction == 0)
-            if(value == 0)
+            }
+        }
+    }else if(nr == 1){
+        if(direction == 0){
+            if(value == 0){
                 P4OUT &= ~BIT6;
-            else if(value = 1)
+            }else if(value = 1){
                 P4OUT |= BIT6;
-        else if(direction == 1)
-            if(value == 0)
+            }
+        }else if(direction == 1){
+            if(value == 0){
                 P4OUT &= ~BIT7;
-            else if(value == 1)
+            }else if(value == 1){
                 P4OUT |= BIT7;
+            }
+        }
+    }
 }
 
 uint8_t getPort1(){
@@ -51,7 +59,7 @@ uint8_t getPort1(){
 }
 
 uint8_t getPort2(){
-    return ((P2IFG | ~P2IN) & (BIT4 | BIT5)) >> 2;
+    return ((P2IFG | ~P2IN) & (BIT4 | BIT5)) << 2;
 }
 
 // Port 1 interrupt service routine

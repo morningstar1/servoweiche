@@ -15,6 +15,6 @@ void uart_send(char * data, size_t size){
   uart_writepos = 0;
   uart_writebuffersize = size;
   //__delay_cycles(1250);
-	UCA0IFG |= UCTXIFG;                           // Set an interruput manually
-	UCA0IE |= UCTXIE | UCTXCPTIE;                 // Enable transfer interrupt
+	UCA1IFG |= UCTXIFG;                           // Set an interruput manually
+	UCA1IE |= UCTXIE | UCTXCPTIE;                 // Enable transfer interrupt
 }

@@ -4,10 +4,10 @@
 
 void FRAMWrite (enum RegisterMap reg, uint16_t data)
 {
-    SYSCFG0 &= ~DFWP;
+    SYSCFG0 = FRWPPW | PFWP;
     uint16_t * FRAM_write_ptr = ((uint16_t*)INFO_START) + reg;
     *FRAM_write_ptr = data;
-    SYSCFG0 |= DFWP;
+    SYSCFG0 = FRWPPW | DFWP | PFWP;
 }
 
 uint16_t getFRAMValue(enum RegisterMap reg)
@@ -28,6 +28,10 @@ uint16_t setFRAMValue(enum RegisterMap reg, uint16_t data)
         }else{
             return 0;
         }
+    case RM_ServoFunction1:
+    case RM_ServoFunction2:
+    case RM_ServoFunction3:
+    case RM_ServoFunction4:
     case RM_ServoLimitMin1:
     case RM_ServoLimitMin2:
     case RM_ServoLimitMin3:
@@ -36,6 +40,8 @@ uint16_t setFRAMValue(enum RegisterMap reg, uint16_t data)
     case RM_ServoLimitMax2:
     case RM_ServoLimitMax3:
     case RM_ServoLimitMax4:
+    case RM_ServoSpeed:
+    case RM_ServoStep:
             FRAMWrite(reg, data);
         return 1;
     case RM_ServoSwitch1:
@@ -48,9 +54,6 @@ uint16_t setFRAMValue(enum RegisterMap reg, uint16_t data)
         }else{
             return 0;
         }
-    case RM_ServoSpeed:
-            FRAMWrite(reg, data);
-        return 1;
     }
     return 0;
 }

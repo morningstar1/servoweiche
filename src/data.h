@@ -29,6 +29,7 @@ enum RegisterMap {
     RM_ServoSwitch3,
     RM_ServoSwitch4,
     RM_ServoSpeed,
+    RM_ServoStep,
     RM_LAST
 };
 

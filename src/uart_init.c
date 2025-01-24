@@ -53,7 +53,7 @@ void __attribute__ ((interrupt(USCI_A1_VECTOR))) USCI_A1_ISR (void)
         // make some space
         uart_seek(1);
       }
-      uart_readbuffer[uart_readpos_in++ & (uart_buffer_size - 1)] = UCA0RXBUF;
+      uart_readbuffer[uart_readpos_in++ & (uart_buffer_size - 1)] = UCA1RXBUF;
       UCA1IFG &= ~(UCRXIFG); //clear interrupt
       __bic_SR_register_on_exit(LPM0_bits + GIE);  // Exit LPM0 on return to main
       break;
