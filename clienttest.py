@@ -1,14 +1,13 @@
 #!/usr/bin/python3
 
-#from pymodbus.client import ModbusSerialClient
 from crccheck.crc import Crc16CcittFalse
 from time import sleep
 
 import time
 import serial
 
-#ser = serial.Serial('/dev/ttyACM1', 115200, timeout=1)
-ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
+ser = serial.Serial('/dev/ttyACM1', 115200, timeout=1)
+#ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
 
 def sendFunction(function, register, senddata):
     data = bytearray(8)
@@ -26,7 +25,7 @@ def sendFunction(function, register, senddata):
     data[7] = crcbytes[0]
     print(":".join("{:02X}".format(c) for c in data))
     ser.write(data)
-    s = ser.read(8)        # read up to ten bytes (timeout)
+    s = ser.read(8)
     
     if len(s) == 8:
         print(":".join("{:02X}".format(c) for c in s))
@@ -34,11 +33,11 @@ def sendFunction(function, register, senddata):
         crcinst.process(s[0:6])
         crcbytes = crcinst.finalbytes()
         if s[6] == crcbytes[1] and s[7] == crcbytes[0]:
-            print("good")
+            print("Ok")
         else:
-            print("bad")
+            print("Fehler")
     else:
-        print("not enought bytes")
+        print("nicht genügend Daten gelesen")
     return s[4] + s[5]*256
 
 def writeData(register, leddata):
@@ -49,37 +48,34 @@ def readData(register):
 
 def readDebug(register):
     return sendFunction(4, register, 0)
+
 def relais(nr, direction, value):
     sendFunction(5, 0, nr | direction << 1 | value << 2)
 
-
-#readData(0)
-#readData(1)
-#readData(2)
-#readData(3)
-#readData(4)
-
-#writeData(0, 4)
-
-#writeData(0, 1)
-#writeData(1, 0) # switch
-#writeData(2, 0) # switch
-#writeData(3, 0) # switch
-#writeData(4, 0) # switch
-#writeData(5, 10*200) # min
-#writeData(6, 10*200) # min
-#writeData(7, 10*200) # min
-#writeData(8, 10*200) # min
-#writeData( 9, 20*200) # max
-#writeData(10, 20*200) # max
-#writeData(11, 20*200) # max
-#writeData(12, 20*200) # max
-#writeData(13, 0) # switch
-#writeData(14, 0) # switch
-#writeData(15, 0) # switch
-#writeData(16, 0) # switch
-#writeData(17, 0) # servo speed
-#writeData(18, 2000) # servo step
+# Modulfunktion
+# 1 = 4x Weiche
+# 2 = Kreuzweiche 2x
+# 3 = 2x Weiche plue Kreuzweiche
+# 4 = Doppelkreuzweiche
+writeData(0, 1) # 4x Weiche
+writeData(1, 0) # letzer Zustand Funktion 1
+writeData(2, 0) # letzer Zustand Funktion 2
+writeData(3, 0) # letzer Zustand Funktion 3
+writeData(4, 0) # letzer Zustand Funktion 4
+writeData(5, 10*200) # min Servo 1
+writeData(6, 10*200) # min Servo 2
+writeData(7, 10*200) # min Servo 3
+writeData(8, 10*200) # min Servo 4
+writeData( 9, 20*200) # max Servo 1
+writeData(10, 20*200) # max Servo 2
+writeData(11, 20*200) # max Servo 3
+writeData(12, 20*200) # max Servo 4
+writeData(13, 0) # Richtungsumkehr Servo 1
+writeData(14, 0) # Richtungsumkehr Servo 2
+writeData(15, 0) # Richtungsumkehr Servo 3
+writeData(16, 0) # Richtungsumkehr Servo 4
+writeData(17, 0) # servo speed
+writeData(18, 2000) # servo step
 #sendFunction(3, 0, 0) # reset
 
 #readDebug(0)

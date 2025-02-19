@@ -44,7 +44,9 @@ void initGPIO(){
     P4DIR  = BIT0| BIT1 | BIT6 | BIT7; // output Relais
     P4SEL0 = BIT2 | BIT3; // enable UART1
     P4SEL1 &= ~(BIT2 | BIT3); // enable UART1
+}
 
+void enableInputInterrupt(){
     P1IES = BIT0 | BIT1 | BIT2 | BIT3 | BIT4 | BIT5; // Hi/Low edge
     P1IE  = BIT0 | BIT1 | BIT2 | BIT3 | BIT4 | BIT5; // interrupt enabled
     P1IFG = 0; // IFG cleared
@@ -74,6 +76,9 @@ int main(void)
     setupInitalValues();
     
     pwm_init();
+    __delay_cycles(10000);
+    enableInputInterrupt();
+
     while(1){
         updateLEDs();
 #if UART_MODE == SMCLK_9600
@@ -81,7 +86,9 @@ int main(void)
 #else
         __bis_SR_register(LPM0_bits + GIE);       // Since SMCLK is source, enter LPM0, interrupts enabled
 #endif
-        while (checkUart()) { }
+        while (checkUart()) {
+            setupInitalValues();
+         }
         //__delay_cycles(1000); // Entprellen???
         
         if(isSwitchUpdated())

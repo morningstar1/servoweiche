@@ -48,7 +48,9 @@ void Weiche4x_in(uint8_t input)
 
 void Weiche4x_out(){
     for(int nr = 0; nr < 4; nr++){
-        pwm_toggle(nr, getFRAMValue(RM_ServoFunction1 + nr));
+        uint16_t v = getFRAMValue(RM_ServoFunction1 + nr);
+        pwm_toggle(nr, v);
+        requestRelais(nr, v);
     }
 }
 
