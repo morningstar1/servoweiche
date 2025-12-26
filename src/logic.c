@@ -10,22 +10,22 @@ void updateLEDs()
     {
     case FN_Weiche4x:
         for(int nr = 0; nr < 4; nr++){
-            leds |= (0x1 << getFRAMValue(RM_ServoFunction1 + nr) ? 1 : 0) << (nr * 2);
+            leds |= (getFRAMValue(RM_ServoFunction1 + nr) ? 2 : 1) << (nr * 2);
         }
         break;
     case FN_Kreuzweiche2x:
         for(int nr = 0; nr < 2; nr++){
-            leds |= (0x1 << getFRAMValue(RM_ServoFunction1 + nr) ? 1 : 0) << (nr * 2);
+            leds |= (getFRAMValue(RM_ServoFunction1 + nr) ? 2 : 1) << (nr * 2);
         }
         break;
     case FN_Weiche2x_Kreuzweiche:
         for(int nr = 0; nr < 2; nr++){
-            leds |= (0x1 << getFRAMValue(RM_ServoFunction1 + nr) ? 1 : 0) << (nr * 2);
+            leds |= (getFRAMValue(RM_ServoFunction1 + nr) ? 2 : 1) << (nr * 2);
         }
-        leds |= (0x1 << getFRAMValue(RM_ServoFunction3) ? 1 : 0) << (6);
+        leds |= (getFRAMValue(RM_ServoFunction3) ? 2 : 1) << (6);
         break;
     case FN_Doppelkreuzweiche:
-        leds |= 0x1 << getFRAMValue(RM_ServoFunction1);
+        leds |= getFRAMValue(RM_ServoFunction1) ? 2 : 1;
         break;
     case FN_Unset:
         leds |= getFRAMValue(RM_ServoFunction1);
