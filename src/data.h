@@ -7,6 +7,7 @@ enum Function {
     FN_Kreuzweiche2x = 2,
     FN_Weiche2x_Kreuzweiche = 3,
     FN_Doppelkreuzweiche = 4,
+    FN_Kreuzweiche_Weiche2x = 5,
     FN_LAST
 };
 

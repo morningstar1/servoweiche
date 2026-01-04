@@ -24,6 +24,12 @@ void updateLEDs()
         }
         leds |= (getFRAMValue(RM_ServoFunction3) ? 2 : 1) << (6);
         break;
+    case FN_Kreuzweiche_Weiche2x:
+        leds |= (getFRAMValue(RM_ServoFunction1) ? 2 : 1) << (2);
+        for(int nr = 0; nr < 2; nr++){
+            leds |= (getFRAMValue(RM_ServoFunction2 + nr) ? 2 : 1) << ((nr + 2) * 2);
+        }
+        break;
     case FN_Doppelkreuzweiche:
         leds |= getFRAMValue(RM_ServoFunction1) ? 2 : 1;
         break;
@@ -102,6 +108,37 @@ void Weiche2x_Kreuzweiche_out(){
     requestRelais(1, v);
 }
 
+void Kreuzweiche_Weiche2x_in(uint8_t input){
+    uint8_t switchstate = (input & (0x3 << (2))) >> (2);
+    if(switchstate == BIT0){ // beide gerade
+        setFRAMValue(RM_ServoFunction1, 0);
+    }else if(switchstate == BIT1){ // beide gekreuzt
+        setFRAMValue(RM_ServoFunction1, 1);
+    }
+
+    for(int nr = 0; nr < 2; nr++){
+        uint8_t switchstate = (input & (0x3 << ((nr + 2) * 2))) >> ((nr + 2) * 2);
+        if(switchstate == BIT0){ // left
+            setFRAMValue(RM_ServoFunction2 + nr, 0);
+        }else if(switchstate == BIT1){ // right
+            setFRAMValue(RM_ServoFunction2 + nr, 1);
+        }
+    }
+}
+
+void Kreuzweiche_Weiche2x_out(){
+    uint16_t v1 = getFRAMValue(RM_ServoFunction1);
+    uint16_t v2 = getFRAMValue(RM_ServoFunction2);
+    uint16_t v3 = getFRAMValue(RM_ServoFunction3);
+    pwm_toggle(0, v1);
+    pwm_toggle(1, v1);
+    requestRelais(0, v1);
+    requestRelais(1, v2);
+
+    pwm_toggle(2, v2);
+    pwm_toggle(3, v3);
+}
+
 void Doppelkreuzweiche_in(uint8_t input)
 {
     if(input == BIT0){ // Alles Gerade
@@ -159,6 +196,10 @@ void checkInputs()
         Weiche2x_Kreuzweiche_in(getSwitchInput());
         Weiche2x_Kreuzweiche_out();
         break;
+    case FN_Kreuzweiche_Weiche2x:
+        Kreuzweiche_Weiche2x_in(getSwitchInput());
+        Kreuzweiche_Weiche2x_out();
+        break;
     case FN_Doppelkreuzweiche:
         Doppelkreuzweiche_in(getSwitchInput());
         Doppelkreuzweiche_out();
@@ -181,6 +222,9 @@ void setupInitalValues()
         break;
     case FN_Weiche2x_Kreuzweiche:
         Weiche2x_Kreuzweiche_out();
+        break;
+    case FN_Kreuzweiche_Weiche2x:
+        Kreuzweiche_Weiche2x_out();
         break;
     case FN_Doppelkreuzweiche:
         Doppelkreuzweiche_out();
